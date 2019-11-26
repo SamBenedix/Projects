@@ -1,1 +1,1 @@
-Implements a simulation of the interaction of user programs in C--
+Implements a simulation of the interaction of users programs with the OS to execute I/O operations in C--
