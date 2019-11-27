@@ -1,0 +1,402 @@
+//Samuel Benedix
+//CGS3763
+//HW3
+
+
+semaphore full1; // stop the producer from producing items when the buffer is full
+semaphore ioReq; //acts as empty
+binarysem mutex1; // a binary (0 or 1) semaphore for allowing only one process at a time
+
+semaphore full2;
+binarysem mutex2;
+semaphore reqPending; //acts as empty
+
+semaphore full2_2;
+binarysem mutex2_2;
+semaphore reqPending_2; //acts as empty
+
+semaphore full3;
+binarysem mutex3;
+semaphore phyIO; // acts as empty
+
+semaphore full3_2;
+binarysem mutex3_2;
+semaphore phyIO_2; // acts as empty
+
+binarysem reqServed[5];
+semaphore opComplete;
+
+semaphore opComplete_2;
+
+binarysem reqHold;
+binarysem reqHold_2;
+
+binarysem print; //semaphore for printing
+
+//semaphores with _2 are used for the second driver or the second disk
+
+int bID = 0;
+int bAddr = 0;
+int bDev = 0;
+
+int ioID[5]; //buffer
+int ioAddr[5];
+int diskAddr;
+
+int ioID2[5]; //buffer
+int ioAddr2[5];
+int diskAddr2;
+
+
+int ctl = 25; //total counter for number of operations done
+
+
+void user(int userNum) //Function for user
+{
+	int address;
+	int i=0;
+	int uID;
+	int deviceNumber;
+	for(i=0; i<5; i++)
+  {
+	
+	 address = random(20) + 1;
+
+	deviceNumber = random(2) + 1;
+	
+	uID = userNum;
+	
+	p(full1);
+	p(mutex1);
+
+
+	bID = uID;
+	bAddr = address;
+	bDev = deviceNumber;
+	
+
+	p(print);
+	cout << "User " << bID << " executes system call SIO or DOIO\n";
+	v(print);
+
+	v(mutex1);
+	v(ioReq);
+	p(reqServed[userNum]);
+  }
+   	
+}
+
+
+void doio() //funciton for DOIO
+{	
+
+	int i=0;
+
+	int tID;
+	int tAddr;
+	int tDev;
+
+	int j=0;
+	int k = 0;
+	int k2 = 0;
+
+	for(i=0; i<25; i++)
+{
+	//int j=0;
+	//int k = 0;
+	
+	p(ioReq);
+	p(mutex1);
+
+	tID = bID;
+	tAddr = bAddr;
+	tDev = bDev;
+
+	p(print);	
+	cout << "DOIO assembles IORB and inserts it in IORQ \n";
+	v(print);
+
+	v(mutex1);
+	v(full1);
+
+//-------------------
+
+
+	if(tDev==1)
+	{	
+	p(full2);
+	p(mutex2);
+	ioID[k] = tID;
+	ioAddr[k] = bAddr;
+	
+	k++;
+
+	if(k==5)
+	   {
+		k=0;
+	   }
+
+	v(mutex2);
+	v(reqPending);
+
+	}
+
+
+	if(tDev==2)
+	{
+	p(full2_2);
+	p(mutex2_2);
+	ioID2[k2] = tID;
+	ioAddr2[k2] = bAddr;
+	
+	k2++;
+
+	if(k2==5)
+	   {
+		k2=0;
+	   }
+
+	v(mutex2_2);
+	v(reqPending_2);
+	
+	}
+
+}
+
+}
+
+void driver1() //function for first driver
+{
+	int i=0;
+	int k=0;
+
+	int drID;
+	int drAddr;
+
+   while(ctl>0)
+ {
+	p(reqPending);
+	if (ctl == 0)
+	    {
+		break;
+	    }
+	
+
+	//p(reqPending);
+	p(mutex2);
+	drID = ioID[k];
+	drAddr = ioAddr[k];
+
+	k++;
+
+	if(k==5)
+	   {
+		k=0;
+	   }
+	v(mutex2);
+	v(full2);
+
+
+	p(full3);
+	p(mutex3);
+	diskAddr = drAddr;
+	
+	p(print);
+	cout << "Driver initiates I/O operation for user " << drID << "\n";
+	v(print);	
+
+	v(mutex3);
+	v(phyIO);
+	p(opComplete);
+	v(reqServed[drID]);
+
+	ctl--;
+	if(ctl==0)
+	{
+		v(reqPending_2);
+		v(phyIO);
+		break;
+	}
+   }
+  
+}
+
+
+
+void driver2() //function for second driver
+{
+	int drID;
+	int drAddr;
+	int i=0;
+	int k=0;
+
+   while(ctl > 0)
+ {
+     
+	p(reqPending_2);
+	if(ctl==0)
+	    {
+		break;
+	    }
+
+
+	
+	p(mutex2_2);
+	drID = ioID2[k];
+	drAddr = ioAddr2[k];
+
+
+	k++;
+
+	if(k==5)
+	   {
+		k=0;
+	   }
+
+	v(mutex2_2);
+	v(full2_2);
+
+
+	p(full3_2);
+	p(mutex3_2);
+	diskAddr = drAddr;
+	
+	p(print);
+	cout << "Driver initiates I/O operation for user " << drID << " \n";
+	v(print);
+
+	v(mutex3_2);
+	v(phyIO_2);
+	p(opComplete_2);
+	v(reqServed[drID]);
+
+	ctl--;
+	if(ctl==0)
+	{
+		v(reqPending);
+		v(phyIO);
+		break;
+	}
+
+	
+      
+   }
+}
+
+void disk1() //function for first disk
+{
+
+   while(ctl > 0)
+ {	
+	int track;
+	int i=0;
+	int j=0;
+
+  {
+	p(phyIO);
+	p(mutex3);
+	track = diskAddr;
+	v(mutex3);
+
+	for(j=0; j<5; j++)
+	{
+	}
+	
+	p(print);
+	cout << "Disk Completes I/O operation \n";
+	cout << "Driver signal user " << bID << " \n";
+	v(print);
+	v(opComplete);
+	
+	v(full3);
+
+	if(ctl==0)
+	{
+		v(phyIO_2);
+		break;
+	}
+  }
+ }
+	
+}
+
+
+void disk2() //function for disk 2
+{
+   while(ctl > 0)
+ {
+	int track;
+	int i=0;
+	int j=0;
+
+   {
+	p(phyIO_2);
+	p(mutex3_2);
+	track = diskAddr;
+	v(mutex3_2);
+
+	for(j=0; j<track; j++)
+	{
+	}
+	
+	p(print);
+	cout << "Disk Completes I/O operation \n";
+	cout << "Driver signal user " << bID << " \n";
+	v(opComplete_2);
+	v(print);
+	
+	v(full3_2);
+
+	
+	if(ctl==0)
+	{
+		v(phyIO);
+		break;
+	}
+   }
+ }
+	
+}
+
+
+main() //main function
+{
+
+	initialsem(full1,1);
+	initialsem(ioReq,0);
+	initialsem(mutex1,1);
+
+	initialsem(full2,5);
+	initialsem(reqPending,0);
+	initialsem(mutex2,1);
+
+	initialsem(full2_2,5);
+	initialsem(reqPending_2,0);
+	initialsem(mutex2_2,1);
+
+	initialsem(full3,1);
+	initialsem(phyIO,0);
+	initialsem(mutex3,1);
+
+	initialsem(full3_2,1);
+	initialsem(phyIO_2,0);
+	initialsem(mutex3_2,1);
+
+	initialsem(opComplete,0);
+
+	initialsem(reqServed[0],0);
+	initialsem(reqServed[1],0);
+	initialsem(reqServed[2],0);
+	initialsem(reqServed[3],0);
+	initialsem(reqServed[4],0);
+
+	initialsem(print, 1);
+
+		cobegin
+		{
+			user(0); user(1); user(2); user(3); user(4); doio(); driver1(); driver2(); disk1(); disk2();
+		
+		}
+		
+		
+} // main
