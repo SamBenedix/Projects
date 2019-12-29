@@ -1,0 +1,1 @@
+This program stores a message in a raw PGM file and decodes it (Python). Utility.py that parses for the header of the pgm file was given to me. 
