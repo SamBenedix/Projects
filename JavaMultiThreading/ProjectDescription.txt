@@ -1,0 +1,3 @@
+Project Title: Synchronized, Cooperating Threads Under Locking
+
+Java program that simulates transactions in a bank for multiple bank accounts. This program implements multiThreading with locks to demonstrate multiple threads of execution and synchronizing their access to necessary shared objects.
